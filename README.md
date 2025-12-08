@@ -75,7 +75,3 @@ The system evaluates multiple forecasting models and automatically selects the b
 *   **Gradient Boosting**: ~2.82
 *   **XGBoost**: ~3.13
 
-## 📈 Power BI Integration
-
-If you prefer Power BI for reporting, check the setup guide in:
-`docs/powerbi_setup.md`
