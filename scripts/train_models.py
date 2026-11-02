@@ -41,7 +41,8 @@ def train_models():
     features = [
         'Age', 'Gender_Code', 'Marital_Code', 'NumberOfDependents', 
         'Shift_Code', 'Tenure_Years', 
-        'AnnualLeaveBalance', 'SickLeaveBalance', 'MaternityLeaveBalance', 'PaternityLeaveBalance'
+        'AnnualLeaveBalance', 'SickLeaveBalance', 'MaternityLeaveBalance', 'PaternityLeaveBalance',
+        'TotalLeaveBalance', 'UtilizationRate', 'Seniority'
     ]
     target = 'RiskCategory'
 
@@ -49,17 +50,24 @@ def train_models():
     y = df_emp[target]
 
     # Train Test Split
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
-    # Train Model
-    clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    # Train Model (Upgraded to Gradient Boosting)
+    print("Training Gradient Boosting Classifier...")
+    from sklearn.ensemble import GradientBoostingClassifier
+    clf = GradientBoostingClassifier(n_estimators=500, learning_rate=0.05, max_depth=5, random_state=42)
     clf.fit(X_train, y_train)
-
+    
     # Evaluate
     y_pred = clf.predict(X_test)
+    report = classification_report(y_test, y_pred)
     print("Classification Report:")
-    print(classification_report(y_test, y_pred))
-
+    print(report)
+    
+    with open("models/classification_report.txt", "w") as f:
+        f.write(f"Model: Gradient Boosting Classifier (Optimized)\n\n")
+        f.write(report)
+        
     # Save Model and Encoders
     joblib.dump(clf, "models/classifier.pkl")
     joblib.dump(le_gender, "models/le_gender.pkl")

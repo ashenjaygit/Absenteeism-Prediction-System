@@ -1,0 +1,11 @@
+Model: Gradient Boosting Classifier (Optimized)
+
+              precision    recall  f1-score   support
+
+        High       0.96      0.94      0.95        68
+         Low       0.98      0.96      0.97        67
+    Moderate       0.90      0.94      0.92        65
+
+    accuracy                           0.94       200
+   macro avg       0.95      0.94      0.95       200
+weighted avg       0.95      0.94      0.95       200

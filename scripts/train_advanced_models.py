@@ -4,12 +4,13 @@ import os
 import joblib
 import json
 from sklearn.ensemble import GradientBoostingRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import MinMaxScaler
 import xgboost as xgb
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Input
+from tensorflow.keras.layers import LSTM, Dense, Input, Dropout
+from tensorflow.keras.callbacks import EarlyStopping
 
 # Suppress TF warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -17,7 +18,10 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 def create_lstm_model(input_shape):
     model = Sequential()
     model.add(Input(shape=input_shape))
-    model.add(LSTM(50, activation='relu'))
+    # Aggressive LSTM: Deep but no dropout (aiming for max fit)
+    model.add(LSTM(128, return_sequences=True, activation='relu'))
+    model.add(LSTM(64, activation='relu'))
+    model.add(Dense(32, activation='relu'))
     model.add(Dense(1))
     model.compile(optimizer='adam', loss='mse')
     return model
@@ -33,7 +37,12 @@ def train_advanced_models():
         return
 
     # Prepare Data
-    features = ['Year', 'Month', 'Day', 'DayOfWeek', 'IsWeekend', 'Lag_1', 'Lag_7', 'RollingMean_7']
+    features = ['Year', 'Month', 'Day', 'DayOfWeek', 'IsWeekend', 
+                'Lag_1', 'Lag_2', 'Lag_3', 'Lag_4', 'Lag_5', 'Lag_6', 'Lag_7', 
+                'Lag_14', 'Lag_30', 
+                'RollingMean_7', 'RollingMean_30',
+                'Month_Sin', 'Month_Cos', 'DayOfWeek_Sin', 'DayOfWeek_Cos',
+                'RollingStd_7', 'RollingStd_30', 'Diff_1']
     target = 'AbsentCount'
     
     # Sort by date just in case
@@ -68,20 +77,22 @@ def train_advanced_models():
     gb_pred = scaler_y.inverse_transform(gb_pred_scaled.reshape(-1, 1)).flatten()
     
     gb_mae = mean_absolute_error(y_test_original, gb_pred)
-    print(f"Gradient Boosting MAE: {gb_mae:.4f}")
+    gb_r2 = r2_score(y_test_original, gb_pred)
+    print(f"Gradient Boosting MAE: {gb_mae:.4f}, R2: {gb_r2:.4f}")
 
     # ---------------------------------------------------------
     # 2. XGBoost
     # ---------------------------------------------------------
-    print("Training XGBoost...")
-    xgb_model = xgb.XGBRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+    print("Training XGBoost (Aggressive)...")
+    xgb_model = xgb.XGBRegressor(n_estimators=500, learning_rate=0.01, max_depth=7, random_state=42, n_jobs=-1)
     xgb_model.fit(X_train, y_train.ravel())
     
     xgb_pred_scaled = xgb_model.predict(X_test)
     xgb_pred = scaler_y.inverse_transform(xgb_pred_scaled.reshape(-1, 1)).flatten()
     
     xgb_mae = mean_absolute_error(y_test_original, xgb_pred)
-    print(f"XGBoost MAE: {xgb_mae:.4f}")
+    xgb_r2 = r2_score(y_test_original, xgb_pred)
+    print(f"XGBoost MAE: {xgb_mae:.4f}, R2: {xgb_r2:.4f}")
 
     # ---------------------------------------------------------
     # 3. LSTM
@@ -93,13 +104,15 @@ def train_advanced_models():
     X_test_lstm = X_test.reshape((X_test.shape[0], 1, X_test.shape[1]))
     
     lstm_model = create_lstm_model((1, X_train.shape[1]))
-    lstm_model.fit(X_train_lstm, y_train, epochs=50, batch_size=32, verbose=0)
+    early_stop = EarlyStopping(monitor='loss', patience=10, restore_best_weights=True)
+    lstm_model.fit(X_train_lstm, y_train, epochs=100, batch_size=16, verbose=0, callbacks=[early_stop])
     
     lstm_pred_scaled = lstm_model.predict(X_test_lstm, verbose=0)
     lstm_pred = scaler_y.inverse_transform(lstm_pred_scaled).flatten()
     
     lstm_mae = mean_absolute_error(y_test_original, lstm_pred)
-    print(f"LSTM MAE: {lstm_mae:.4f}")
+    lstm_r2 = r2_score(y_test_original, lstm_pred)
+    print(f"LSTM MAE: {lstm_mae:.4f}, R2: {lstm_r2:.4f}")
 
     # ---------------------------------------------------------
     # 4. Hybrid (Average of Best 2)
@@ -110,7 +123,8 @@ def train_advanced_models():
     
     hybrid_pred = (xgb_pred + lstm_pred) / 2
     hybrid_mae = mean_absolute_error(y_test_original, hybrid_pred)
-    print(f"Hybrid (XGB+LSTM) MAE: {hybrid_mae:.4f}")
+    hybrid_r2 = r2_score(y_test_original, hybrid_pred)
+    print(f"Hybrid (XGB+LSTM) MAE: {hybrid_mae:.4f}, R2: {hybrid_r2:.4f}")
 
     # ---------------------------------------------------------
     # Selection & Saving
@@ -122,8 +136,23 @@ def train_advanced_models():
         "Hybrid": hybrid_mae
     }
     
+    # We still select based on MAE (lower is better), but we printed R2
+
+    
     best_model_name = min(results, key=results.get)
     print(f"\nBEST MODEL: {best_model_name} (MAE: {results[best_model_name]:.4f})")
+
+    # Save detailed report
+    report = f"""
+Model Performance Report
+========================
+Gradient Boosting: MAE={gb_mae:.4f}, R2={gb_r2:.4f}
+XGBoost:           MAE={xgb_mae:.4f}, R2={xgb_r2:.4f}
+LSTM:              MAE={lstm_mae:.4f}, R2={lstm_r2:.4f}
+Hybrid:            MAE={hybrid_mae:.4f}, R2={hybrid_r2:.4f}
+    """
+    with open("models/detailed_metrics.txt", "w") as f:
+        f.write(report)
     
     # Save Scalers
     joblib.dump(scaler_X, "models/scaler_X.pkl")

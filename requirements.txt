@@ -5,3 +5,9 @@ matplotlib
 seaborn
 streamlit
 openpyxl
+xgboost
+tensorflow
+shap
+groq
+python-dotenv
+chromadb

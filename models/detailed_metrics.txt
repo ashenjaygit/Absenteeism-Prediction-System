@@ -1,0 +1,8 @@
+
+Model Performance Report
+========================
+Gradient Boosting: MAE=2.2812, R2=0.3368
+XGBoost:           MAE=2.3728, R2=0.2770
+LSTM:              MAE=0.3052, R2=0.9885
+Hybrid:            MAE=1.1852, R2=0.8209
+    

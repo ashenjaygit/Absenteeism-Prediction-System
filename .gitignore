@@ -36,3 +36,6 @@ wheels/
 
 # Brain artifacts
 brain/
+
+# Environment Variables
+.env

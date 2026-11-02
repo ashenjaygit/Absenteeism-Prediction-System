@@ -1,0 +1,26 @@
+HOW TO RUN THIS PROJECT ON A NEW COMPUTER
+
+1.  **Unzip the File**: Extract the contents of the zip file to a folder (e.g., on your Desktop).
+
+2.  **Install Python**:
+    *   Download and install Python 3.10 or newer from https://www.python.org/downloads/
+    *   **IMPORTANT**: During installation, check the box that says **"Add Python to PATH"**.
+
+3.  **Open Terminal**:
+    *   Open the folder where you extracted the files.
+    *   Right-click in an empty space in the folder -> Select "Open in Terminal" (or "Open PowerShell window here").
+
+4.  **Install Dependencies**:
+    *   Run the following command to install all necessary libraries:
+        py -m pip install -r requirements.txt
+    *   Then install the advanced model libraries:
+        py -m pip install xgboost tensorflow
+
+5.  **Run the App**:
+    *   Double-click the `run_app.bat` file in the folder.
+    *   OR run this command in the terminal:
+        streamlit run app.py
+
+6.  **Troubleshooting**:
+    *   If you see "pip is not recognized", ensure Python was added to PATH (Step 2).
+    *   If `run_app.bat` doesn't work, try running `py -m streamlit run app.py` in the terminal.
